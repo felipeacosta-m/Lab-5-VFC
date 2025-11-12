@@ -109,6 +109,92 @@ ya que cada una posee características esenciales para la eliminación de ruido,
 Estas propiedades permiten un estudio más preciso y detallado del comportamiento de las señales biológicas.
 
   ![image](https://github.com/felipeacosta-m/Lab-5-VFC/blob/c16b326b690082e9ac2924843143b869dede6708/Mexican%20hat.jpg)
+---
+## Procedimiento 
+
+Este laboratorio fue diseñado para analizar como varia la frecuencia cardiaca (HRV) por medio de la transformada de Wavelet, con el fin de identificar cambios en las frecuencias de la señal capturada y estudiar la variabilidad que tiene en el dominio del tiempo. Permitiendo evaluar como se encuentra el funcionamiento del sistema nervioso autónomo que se compone del sistema nervioso simpático y parasimpático, esto gracias a las fluctuaciones que se evidencien en los intervalos RR que se capten en el ECG.
 
 ---
+## 1) Cálculos del filtro
+Se optó por aplicar un filtro digital Butterworth de tipo pasa bajos debido a su característica principal: una respuesta en frecuencia suave, sin ondulaciones en la banda pasante. Esta propiedad resulta especialmente adecuada para mantener la forma original de la señal cardíaca, evitando distorsiones que podrían afectar su análisis.
 
+La frecuencia de corte seleccionada fue de 250 Hz, lo que permite suprimir eficazmente componentes de alta frecuencia, como el ruido generado por la actividad muscular o las interferencias electromagnéticas, sin comprometer la información relevante del ECG.
+
+Por otro lado, se eligió un filtro de orden 5, ya que proporciona una atenuación eficiente fuera de la banda útil sin comprometer la estabilidad numérica del sistema. Evitar órdenes más altos permite reducir el riesgo de inestabilidades o artefactos indeseados, alineándose con los objetivos del presente laboratorio.
+```pyton
+# Parámetros
+fs = 250  # Frecuencia de muestreo en Hz
+low = 0.05
+high = 40 
+orden = 1
+
+# Filtro pasa banda
+sos = butter(orden, [low, high], btype='bandpass', fs=fs, output='sos')
+
+# Leer archivo CSV
+filename = "senal_corazon.csv"
+data = []
+timestamps = []
+
+with open(filename, mode='r') as file:
+    reader = csv.reader(file)
+    next(reader)
+    for row in reader:
+        timestamps.append(float(row[0]))
+        data.append(float(row[1]))
+
+data = np.array(data)
+
+# Filtrar señal
+filtered_data = sosfilt(sos, data)
+```
+
+## 2) Cálculo de la Frecuencia
+Se seleccionó una frecuencia de corte de 250 Hz considerando tanto criterios fisiológicos como prácticos. Este valor permite conservar la información más relevante del ECG, especialmente los componentes de alta frecuencia del complejo QRS, que son fundamentales para la detección precisa de los picos R. Al mismo tiempo, es lo suficientemente bajo como para atenuar el ruido de alta frecuencia que suele estar presente en las señales biomédicas.
+
+Para implementar el filtro digitalmente, esta frecuencia de corte fue normalizada respecto a la frecuencia de Nyquist, que en este caso es de 500 Hz (la mitad de la frecuencia de muestreo, 250 Hz). La normalización es necesaria ya que las funciones de diseño de filtros digitales trabajan en una escala de 0 a 1, donde 1 representa la frecuencia de Nyquist.
+
+Este valor de 0.5 es el que se utiliza internamente en el diseño del filtro para establecer el punto de corte deseado.
+## 3) Detección de Picos R
+La detección de los picos R se realiza utilizando la función find_peaks() sobre la señal de ECG previamente filtrada. Para asegurar que solo se identifiquen los verdaderos picos R, se establecen criterios específicos como un umbral mínimo de amplitud y una separación mínima entre picos consecutivos. Esta etapa resulta clave, ya que los intervalos entre picos R constituyen la base para el análisis de la variabilidad de la frecuencia cardíaca (HRV), tanto en el dominio temporal como en el análisis mediante transformada wavelet.
+```pyton
+# Detección de picos R
+peaks, _ = find_peaks(normalized_cwt, distance=fs*0.4, height=0.3)
+```
+## 4) Cálculo de Intervalos R-R
+Los intervalos R-R se obtienen calculando la diferencia entre las posiciones de los picos R consecutivos, utilizando np.diff(picos). Posteriormente, estas diferencias se dividen por la frecuencia de muestreo (fs) para expresar el resultado en segundos. Estos intervalos reflejan el tiempo transcurrido entre latidos sucesivos y constituyen la base para el análisis de la variabilidad de la frecuencia cardíaca (HRV).
+
+```pyton
+# Calcular intervalos R-R en segundos
+rr_intervals = np.diff(np.array(timestamps)[peaks])
+```
+## 5) Variabilidad de la frecuencia cardiaca 
+A partir de los intervalos RR extraídos, se calcularon varias métricas estándar para evaluar la variabilidad de la frecuencia cardíaca (HRV) en el dominio del tiempo. Se obtuvo el valor medio de los intervalos (rr_mean), el cual representa el ritmo cardíaco promedio durante el periodo de análisis.
+
+La desviación estándar (sdnn) se utilizó como medida global de la variabilidad de los intervalos RR, mientras que el valor de rmssd se calculó para evaluar las diferencias cuadráticas medias entre intervalos sucesivos, lo cual refleja la actividad parasimpática a corto plazo.
+
+Asimismo, se computaron las métricas nn50 y pnn50, que cuantifican cuántos pares de intervalos consecutivos difieren en más de 50 ms y qué porcentaje representan del total, respectivamente. Estas últimas también están relacionadas con el control parasimpático del corazón y son útiles para caracterizar cambios rápidos en el ritmo cardíaco.
+
+Este conjunto de indicadores permite una caracterización inicial del comportamiento dinámico de la señal ECG, y sirve como base para la comparación entre sujetos sanos y aquellos con posibles disfunciones autonómicas.
+
+
+```pyton
+# Métricas de HRV
+rr_mean = np.mean(rr_intervals)
+sdnn = np.std(rr_intervals)
+rmssd = np.sqrt(np.mean(np.square(np.diff(rr_intervals))))
+nn50 = np.sum(np.abs(np.diff(rr_intervals)) > 0.05)
+pnn50 = (nn50 / len(rr_intervals)) * 100 if len(rr_intervals) > 0 else 0
+```
+## 6) Transformada Wavelet
+Se utilizo la Transformada Wavelet Continua (CWT) utilizando la wavelet de Morlet para analizar la señal filtered_data. Se utiliza un rango de escalas (widths) de 1 a 49, y un parámetro w=5 que ajusta la forma de la wavelet Morlet. Posteriormente, se calcula la magnitud absoluta de la transformada (cwt_abs) y se suma a lo largo del eje de escalas para obtener un perfil de energía temporal (cwt_sum).
+```pyton
+# Transformada Wavelet Continua con Morlet
+widths = np.arange(1, 50)
+cwt_matrix = cwt(filtered_data, morlet2, widths, w=5)
+
+# Escala de mejor contraste
+cwt_abs = np.abs(cwt_matrix)
+cwt_sum = np.sum(cwt_abs, axis=0)
+normalized_cwt = (cwt_sum - np.min(cwt_sum)) / (np.max(cwt_sum) - np.min(cwt_sum))
+```
