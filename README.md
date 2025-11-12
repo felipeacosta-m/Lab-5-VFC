@@ -70,5 +70,45 @@ A diferencia de la Transformada de Fourier (que da solo información global de f
   Se caracteriza por su gran compactación del soporte y su capacidad para detectar **cambios bruscos o discontinuidades** en una señal.  
   Es esencial para eliminar el ruido y analizar datos biológicos con precisión.
 
+- **Symlets:**  
+  Reducen los artefactos al reconstruir una señal y logran mantener una buena localización en el tiempo y en frecuencia.  
+  Permiten reconstruir de forma precisa las señales sin distorsión, siendo útiles para análisis donde se requiere alta fidelidad.
+
+- **Coiflets:**  
+  Presentan una alta regularidad y momentos nulos tanto en la función wavelet como en la función de escala.  
+  Tienen mejor localización en tiempo y frecuencia que las Daubechies, lo que las hace ideales para analizar señales suaves con cambios graduales y caracterizar la forma de las ondas.
+
+- **Morlet:**  
+  Es una onda senoidal modulada por una función gaussiana.  
+  Ofrece excelente resolución en frecuencia, aunque menor en tiempo.  
+  Se usa principalmente para estudiar oscilaciones y eventos transitorios en señales, pero no para compresión, sino para análisis continuo.
+
+- **Mexican Hat:**  
+  Tiene forma acampanada y corresponde a la segunda derivada de una función gaussiana.  
+  Es muy adecuada para detectar picos o eventos únicos en una señal, como transitorios o impulsos de corta duración.
+
+- **Haar:**  
+  Es la wavelet más simple, de forma cuadrada y discontinua.  
+  Posee excelente localización temporal pero baja en frecuencia.  
+  Se usa especialmente en señales digitales con saltos abruptos o cambios repentinos.
+
+- **Meyer:**  
+  Es una wavelet completamente suave e infinitamente diferenciable.  
+  No tiene soporte compacto en el tiempo, pero sí en frecuencia, lo que permite una transición suave entre diferentes bandas de frecuencia.
+
+- **Beylkin:**  
+  Se utiliza en algoritmos de compresión y en la resolución matemática de ecuaciones integrales.  
+  Su alto número de momentos nulos la hace ideal para representar funciones suaves, como las de campos electromagnéticos.
+
+- **Battle-Lemarie:**  
+  Se basa en funciones polinómicas por tramos, lo que le otorga continuidad y suavidad.  
+  Presenta un buen balance entre localización temporal y frecuencia, siendo útil en aplicaciones donde se requiere una representación estable y continua.
+  
+Las wavelets más utilizadas en el análisis de señales fisiológicas (como **EEG, ECG y EMG**) son las Symlets, Coiflets, Morlet, Mexican Hat y Haar,  
+ya que cada una posee características esenciales para la eliminación de ruido, análisis de frecuencias específicas y detección de patrones.  
+Estas propiedades permiten un estudio más preciso y detallado del comportamiento de las señales biológicas.
+
+  ![image](https://github.com/felipeacosta-m/Lab-5-VFC/blob/c16b326b690082e9ac2924843143b869dede6708/Mexican%20hat.jpg)
+
 ---
 
