@@ -180,8 +180,6 @@ A partir de los intervalos RR extraídos, se calcularon varias métricas estánd
 
 La desviación estándar (sdnn) se utilizó como medida global de la variabilidad de los intervalos RR, mientras que el valor de rmssd se calculó para evaluar las diferencias cuadráticas medias entre intervalos sucesivos, lo cual refleja la actividad parasimpática a corto plazo.
 
-Asimismo, se computaron las métricas nn50 y pnn50, que cuantifican cuántos pares de intervalos consecutivos difieren en más de 50 ms y qué porcentaje representan del total, respectivamente. Estas últimas también están relacionadas con el control parasimpático del corazón y son útiles para caracterizar cambios rápidos en el ritmo cardíaco.
-
 Este conjunto de indicadores permite una caracterización inicial del comportamiento dinámico de la señal ECG, y sirve como base para la comparación entre sujetos sanos y aquellos con posibles disfunciones autonómicas.
 
 
@@ -202,7 +200,7 @@ plt.tight_layout()
 plt.show()
 ```
 ## 6) Transformada Wavelet
-Se utilizo la Transformada Wavelet Continua (CWT) utilizando la wavelet de Morlet para analizar la señal filtered_data. Se utiliza un rango de escalas (widths) de 1 a 49, y un parámetro w=5 que ajusta la forma de la wavelet Morlet. Posteriormente, se calcula la magnitud absoluta de la transformada (cwt_abs) y se suma a lo largo del eje de escalas para obtener un perfil de energía temporal (cwt_sum).
+
 ```pyton
 # ----------------------------
 # 7) Padding para SWT
