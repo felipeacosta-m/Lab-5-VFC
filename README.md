@@ -120,33 +120,34 @@ Se optó por aplicar un filtro digital Butterworth de tipo pasa bajos debido a s
 
 La frecuencia de corte seleccionada fue de 250 Hz, lo que permite suprimir eficazmente componentes de alta frecuencia, como el ruido generado por la actividad muscular o las interferencias electromagnéticas, sin comprometer la información relevante del ECG.
 
-Por otro lado, se eligió un filtro de orden 5, ya que proporciona una atenuación eficiente fuera de la banda útil sin comprometer la estabilidad numérica del sistema. Evitar órdenes más altos permite reducir el riesgo de inestabilidades o artefactos indeseados, alineándose con los objetivos del presente laboratorio.
+Por otro lado, se eligió un filtro de orden 4, ya que proporciona una atenuación eficiente fuera de la banda útil sin comprometer la estabilidad numérica del sistema. Evitar órdenes más altos permite reducir el riesgo de inestabilidades o artefactos indeseados, alineándose con los objetivos del presente laboratorio.
 ```pyton
-# Parámetros
-fs = 250  # Frecuencia de muestreo en Hz
-low = 0.05
-high = 40 
-orden = 1
+# ----------------------------
+# 1) Cargar datos
+# ----------------------------
+from tkinter.filedialog import askopenfilename
+file_path = askopenfilename(filetypes=[("Excel files", "*.xlsx")])
 
-# Filtro pasa banda
-sos = butter(orden, [low, high], btype='bandpass', fs=fs, output='sos')
+df = pd.read_excel(file_path)
+t = df['Tiempo (s)'].to_numpy()
+x = df['Señal'].to_numpy()
 
-# Leer archivo CSV
-filename = "senal_corazon.csv"
-data = []
-timestamps = []
+# ----------------------------
+# 2) Filtro Butterworth pasa banda
+# ----------------------------
+fs = 250  # Hz
+lowcut, highcut, order = 0.5, 40, 4
+nyq = 0.5 * fs
+b, a = butter(order, [lowcut/nyq, highcut/nyq], btype='band')
 
-with open(filename, mode='r') as file:
-    reader = csv.reader(file)
-    next(reader)
-    for row in reader:
-        timestamps.append(float(row[0]))
-        data.append(float(row[1]))
-
-data = np.array(data)
-
-# Filtrar señal
-filtered_data = sosfilt(sos, data)
+y = np.zeros_like(x)
+for n in range(len(x)):
+    for i in range(len(b)):
+        if n - i >= 0:
+            y[n] += b[i] * x[n - i]
+    for j in range(1, len(a)):
+        if n - j >= 0:
+            y[n] -= a[j] * y[n - j]
 ```
 
 ## 2) Cálculo de la Frecuencia
@@ -158,15 +159,21 @@ Este valor de 0.5 es el que se utiliza internamente en el diseño del filtro par
 ## 3) Detección de Picos R
 La detección de los picos R se realiza utilizando la función find_peaks() sobre la señal de ECG previamente filtrada. Para asegurar que solo se identifiquen los verdaderos picos R, se establecen criterios específicos como un umbral mínimo de amplitud y una separación mínima entre picos consecutivos. Esta etapa resulta clave, ya que los intervalos entre picos R constituyen la base para el análisis de la variabilidad de la frecuencia cardíaca (HRV), tanto en el dominio temporal como en el análisis mediante transformada wavelet.
 ```pyton
-# Detección de picos R
-peaks, _ = find_peaks(normalized_cwt, distance=fs*0.4, height=0.3)
+# ----------------------------
+# 3) Detección de Picos R
+# ----------------------------
+picos, _ = find_peaks(y, height=0.5, distance=int(0.6 * fs))
+tiempos_picos = t[picos]
 ```
 ## 4) Cálculo de Intervalos R-R
 Los intervalos R-R se obtienen calculando la diferencia entre las posiciones de los picos R consecutivos, utilizando np.diff(picos). Posteriormente, estas diferencias se dividen por la frecuencia de muestreo (fs) para expresar el resultado en segundos. Estos intervalos reflejan el tiempo transcurrido entre latidos sucesivos y constituyen la base para el análisis de la variabilidad de la frecuencia cardíaca (HRV).
 
 ```pyton
-# Calcular intervalos R-R en segundos
-rr_intervals = np.diff(np.array(timestamps)[peaks])
+# ----------------------------
+# 4) Cálculo de Intervalos R-R
+# ----------------------------
+intervalos_rr = np.diff(tiempos_picos)
+tiempos_rr = (tiempos_picos[:-1] + tiempos_picos[1:]) / 2
 ```
 ## 5) Variabilidad de la frecuencia cardiaca 
 A partir de los intervalos RR extraídos, se calcularon varias métricas estándar para evaluar la variabilidad de la frecuencia cardíaca (HRV) en el dominio del tiempo. Se obtuvo el valor medio de los intervalos (rr_mean), el cual representa el ritmo cardíaco promedio durante el periodo de análisis.
@@ -179,22 +186,39 @@ Este conjunto de indicadores permite una caracterización inicial del comportami
 
 
 ```pyton
-# Métricas de HRV
-rr_mean = np.mean(rr_intervals)
-sdnn = np.std(rr_intervals)
-rmssd = np.sqrt(np.mean(np.square(np.diff(rr_intervals))))
-nn50 = np.sum(np.abs(np.diff(rr_intervals)) > 0.05)
-pnn50 = (nn50 / len(rr_intervals)) * 100 if len(rr_intervals) > 0 else 0
+# ----------------------------
+# 5) HRV en dominio del tiempo
+# ----------------------------
+print("\n--- HRV Dominio del tiempo ---")
+print(f"Media RR: {intervalos_rr.mean():.4f} s   SDNN: {intervalos_rr.std():.4f} s")
+
+plt.figure(figsize=(8, 4))
+plt.hist(intervalos_rr, bins=30, color='skyblue', edgecolor='black')
+plt.title('Histograma de Intervalos R-R')
+plt.xlabel('RR (s)')
+plt.ylabel('Frecuencia')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 ```
 ## 6) Transformada Wavelet
 Se utilizo la Transformada Wavelet Continua (CWT) utilizando la wavelet de Morlet para analizar la señal filtered_data. Se utiliza un rango de escalas (widths) de 1 a 49, y un parámetro w=5 que ajusta la forma de la wavelet Morlet. Posteriormente, se calcula la magnitud absoluta de la transformada (cwt_abs) y se suma a lo largo del eje de escalas para obtener un perfil de energía temporal (cwt_sum).
 ```pyton
-# Transformada Wavelet Continua con Morlet
-widths = np.arange(1, 50)
-cwt_matrix = cwt(filtered_data, morlet2, widths, w=5)
+# ----------------------------
+# 7) Padding para SWT
+# ----------------------------
+desired_levels = 4
+base = 2**desired_levels
+L0 = len(rr_interpolados)
+Lpad = ((L0 - 1)//base + 1)*base
 
-# Escala de mejor contraste
-cwt_abs = np.abs(cwt_matrix)
-cwt_sum = np.sum(cwt_abs, axis=0)
-normalized_cwt = (cwt_sum - np.min(cwt_sum)) / (np.max(cwt_sum) - np.min(cwt_sum))
+pad_width = Lpad - L0
+rr_pad = np.pad(rr_interpolados, (0, pad_width), 'edge')
+t_pad  = np.pad(
+    tiempo_interp,
+    (0, pad_width),
+    mode='linear_ramp',
+    end_values=(tiempo_interp[-1],
+                tiempo_interp[-1] + pad_width*(1/fs_interp))
+)
 ```
