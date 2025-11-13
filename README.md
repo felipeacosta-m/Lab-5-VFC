@@ -1,5 +1,9 @@
 # Lab-5-VFC
 
+## Diagrama de flujo
+
+![image](https://github.com/felipeacosta-m/Lab-5-VFC/blob/a0d77dcd8e585a9fe0f9237e5fb0ff66eecc4c57/Diagrama%20flujo%20se%C3%B1ales.jpg)
+
 ## Introducción
 
 ### Actividad simpática y parasimpática del sistema nervioso autónomo
